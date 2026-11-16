@@ -1,0 +1,28 @@
+# Optional: use a NATIVE Ollama (Metal on macOS / CUDA on Linux) for speed
+# instead of the bundled CPU-only container.
+#
+# 1. Install Ollama natively (https://ollama.com) and pull the model:
+#        ollama pull qwen2.5:3b
+#        ollama serve                       # serves http://localhost:11434
+# 2. Copy this file to docker-compose.override.yml:
+#        cp docker-compose.override.yml.example docker-compose.override.yml
+# 3. Start just the app — it reaches your native Ollama on the host:
+#        docker compose up app          # (or: podman compose up app)
+#
+# This override points the app at the host's Ollama and drops the bundled
+# ollama / model-pull services (the app no longer depends on them).
+#
+# Rancher Desktop (dockerd/moby mode): behaves exactly like Docker here —
+# `host.docker.internal` resolves and this override works unchanged.
+# Podman: `host.docker.internal` also resolves on recent versions (the
+# `host-gateway` extra_hosts below makes it explicit); on older Podman use
+# http://host.containers.internal:11434.
+services:
+  app:
+    environment:
+      - OLLAMA_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5:3b
+      - SAMR_HARDENED=0
+    depends_on: []
+    extra_hosts:
+      - "host.docker.internal:host-gateway"   # Linux needs this; harmless on macOS

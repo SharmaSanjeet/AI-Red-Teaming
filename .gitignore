@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv*/
+.venv-publish/
+venv/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# local artifacts (never commit)
+*.log
+labs/Lab-8-Capstone-Engagement/

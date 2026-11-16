@@ -1,0 +1,61 @@
+# Nova — Samr VULNERABLE TRAINING TARGET
+# Local lab only. Bound to 127.0.0.1 on purpose — DO NOT expose to a network.
+#
+# One command brings up the whole lab with a real local model:
+#
+#   docker compose up            # ollama + auto-pull qwen2.5:3b + Nova app
+#
+# No Docker Desktop? Rancher Desktop (free) in dockerd/moby mode gives the same
+# `docker compose` CLI — commands are identical. (Podman: `podman compose up` also works.)
+#
+# The app also runs standalone on the offline STUB LLM (no model needed):
+#
+#   docker compose up app        # app only (deterministic stub)
+#
+# NOTE (macOS): Ollama inside Docker is CPU-only (no Metal passthrough) and is
+# slow for a 3B model. For Metal/CUDA speed, run Ollama natively and use the
+# override in docker-compose.override.yml.example (points the app at
+# host.docker.internal:11434 and skips the bundled ollama/model-pull services).
+services:
+  # Local LLM — comes up by default so `docker compose up` needs no profile.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11434:11434"
+    volumes:
+      - ollama_models:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # One-shot: pull the model once Ollama is healthy, then exit.
+  model-pull:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+    entrypoint: ["ollama", "pull", "qwen2.5:3b"]
+    restart: "no"
+
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      - OLLAMA_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:3b
+      - SAMR_HARDENED=0          # set to 1 for the hardened run (used from Lab 3; before/after in Lab 6)
+    # NOTE: intentionally NO hard `depends_on: model-pull`. That keeps
+    # `docker compose up app` a genuine offline path — it starts ONLY this
+    # container and serves the deterministic STUB LLM (no ~2GB model download).
+    # For the full stack, `docker compose up` still starts ollama + model-pull
+    # alongside the app; the app probes Ollama on every request and switches
+    # from stub to the real model automatically once the pull finishes (early
+    # requests transparently use the stub). Nothing hard-fails either way.
+
+volumes:
+  ollama_models:
